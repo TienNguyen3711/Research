@@ -12,11 +12,11 @@ try:
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.kdf.hkdf import HKDF
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-except ImportError:
-    Fernet = None
-    HKDF = None
-    PBKDF2HMAC = None
-    hashes = None
+except ImportError as exc:
+    raise ImportError(
+        "The 'cryptography' package is required for secure operation. "
+        "Install it with: pip install cryptography"
+    ) from exc
 
 try:
     import matplotlib.pyplot as plt
@@ -64,7 +64,7 @@ def load_local_env_file(env_path=".env"):
 
 load_local_env_file()
 
-KDF_SALT_SIZE = 16
+KDF_SALT_SIZE = 32  # 256-bit salt per NIST SP 800-132 recommendation
 FAKE_DATA_FILE_MAGIC = "FAKE_TRAJECTORY_SECURE"
 FAKE_DATA_FILE_VERSION = 1
 FAKE_DATA_FILE_MAGIC_BYTES = FAKE_DATA_FILE_MAGIC.encode("ascii")
@@ -79,11 +79,11 @@ DEFAULT_LOCAL_WINDOW_SIZE = 4
 DEFAULT_LOCAL_DIVERSITY_METERS = 120
 DEFAULT_QUANTIZATION_GRID_METERS = 12
 DEFAULT_MIN_PRIVACY_DISTANCE_METERS = int(os.getenv("MIN_PRIVACY_DISTANCE_METERS", "300"))
-DEFAULT_ENDPOINT_OFFSET_METERS = int(os.getenv("ENDPOINT_OFFSET_METERS", "3000"))
-DEFAULT_MAX_POINT_OFFSET_METERS = int(os.getenv("MAX_POINT_OFFSET_METERS", "3000"))
+DEFAULT_ENDPOINT_OFFSET_METERS = int(os.getenv("ENDPOINT_OFFSET_METERS", "1000"))
+DEFAULT_MAX_POINT_OFFSET_METERS = int(os.getenv("MAX_POINT_OFFSET_METERS", "2000"))
 OFFSET_SAFETY_MARGIN = float(os.getenv("OFFSET_SAFETY_MARGIN", "0.96"))
-DEFAULT_MIDDLE_MIN_OFFSET_METERS = int(os.getenv("MIDDLE_MIN_OFFSET_METERS", "2500"))
-DEFAULT_MIDDLE_MAX_OFFSET_METERS = int(os.getenv("MIDDLE_MAX_OFFSET_METERS", "3000"))
+DEFAULT_MIDDLE_MIN_OFFSET_METERS = int(os.getenv("MIDDLE_MIN_OFFSET_METERS", "1000"))
+DEFAULT_MIDDLE_MAX_OFFSET_METERS = int(os.getenv("MIDDLE_MAX_OFFSET_METERS", "2000"))
 MIDDLE_MIN_OFFSET_SAFETY = float(os.getenv("MIDDLE_MIN_OFFSET_SAFETY", "0.99"))
 MIDDLE_MAX_OFFSET_SAFETY = float(os.getenv("MIDDLE_MAX_OFFSET_SAFETY", "0.79"))
 METERS_PER_DEGREE = 111_000
@@ -100,7 +100,15 @@ dynamic_factors = {
 
 
 def secure_clear_dict(d):
-    """Best-effort cleanup for dictionary contents held in Python memory."""
+    """Best-effort cleanup for dictionary contents held in Python memory.
+
+    LIMITATION: Python's garbage collector and object reuse model do not
+    guarantee that overwriting references actually erases data from RAM.
+    Prior string/bytes objects may persist until GC reclaims them.
+    This provides a best-effort reduction in residency time only — it is
+    NOT a cryptographic-grade memory wipe. For true erasure, use bytearray
+    with ctypes.memset or a C extension.
+    """
     if isinstance(d, dict):
         for key in list(d.keys()):
             d[key] = None
@@ -108,7 +116,12 @@ def secure_clear_dict(d):
 
 
 def secure_clear_list(lst):
-    """Best-effort cleanup for list contents held in Python memory."""
+    """Best-effort cleanup for list contents held in Python memory.
+
+    LIMITATION: Same as secure_clear_dict — Python does not guarantee
+    memory erasure on reference overwrite. This reduces residency time
+    only and is NOT a cryptographic-grade wipe.
+    """
     if isinstance(lst, list):
         for index in range(len(lst)):
             lst[index] = None

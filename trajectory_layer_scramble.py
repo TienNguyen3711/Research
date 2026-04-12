@@ -116,8 +116,8 @@ def generate_point_labels(session_seed, point_count):
     return labels
 
 
-def derive_transform_from_label(label, point_index, point_ratio, point_count, scramble_radius_meters, lng_scale):
-    digest = hashlib.sha256(f"{label}:{point_index}".encode("utf-8")).digest()
+def derive_transform_from_label(label, point_index, point_ratio, point_count, scramble_radius_meters, lng_scale, session_seed):
+    digest = hmac.new(session_seed, f"{label}:{point_index}".encode("utf-8"), hashlib.sha256).digest()
 
     def unit(start):
         return int.from_bytes(digest[start:start + 2], "big") / 65535.0
@@ -147,7 +147,7 @@ def derive_transform_from_label(label, point_index, point_ratio, point_count, sc
     return {"matrix": (1.0, 0.0, 0.0, 1.0), "offset": (offset_x, offset_y)}
 
 
-def build_smoothed_label_offsets(labels, base_trajectory, reference_frame, scramble_radius_meters, route_frames=None):
+def build_smoothed_label_offsets(labels, base_trajectory, reference_frame, scramble_radius_meters, session_seed, route_frames=None):
     point_count = len(base_trajectory)
     lng_scale = reference_frame["lng_scale"]
     if route_frames is None:
@@ -167,26 +167,27 @@ def build_smoothed_label_offsets(labels, base_trajectory, reference_frame, scram
             point_count,
             scramble_radius_meters,
             lng_scale,
+            session_seed,
         )
         seed_x, seed_y = transform["offset"]
         tangent = local_tangents[index]
         normal = local_normals[index]
         corridor_lateral.append((seed_x * normal[0]) + (seed_y * normal[1]))
         corridor_longitudinal.append(((seed_x * tangent[0]) + (seed_y * tangent[1])) * 0.28)
-        curve_strength = min(scramble_radius_meters * 0.3, 600.0)
+        curve_strength = min(scramble_radius_meters * 0.45, 1000.0)
         curve_lateral.append(math.sin(point_ratio * 1.4 * math.pi + (index * 0.09)) * curve_strength)
         curve_longitudinal.append(math.cos(point_ratio * 1.1 * math.pi + (index * 0.05)) * curve_strength * 0.18)
-    smooth_lateral = smooth_scalar_series(corridor_lateral, passes=7)
-    smooth_longitudinal = smooth_scalar_series(corridor_longitudinal, passes=5)
-    smooth_curve_lateral = smooth_scalar_series(curve_lateral, passes=4)
-    smooth_curve_longitudinal = smooth_scalar_series(curve_longitudinal, passes=3)
+    smooth_lateral = smooth_scalar_series(corridor_lateral, passes=3)
+    smooth_longitudinal = smooth_scalar_series(corridor_longitudinal, passes=2)
+    smooth_curve_lateral = smooth_scalar_series(curve_lateral, passes=2)
+    smooth_curve_longitudinal = smooth_scalar_series(curve_longitudinal, passes=2)
     smoothed_offsets = []
     for index, (base_lat, base_lon, bend_lat, bend_lon) in enumerate(zip(smooth_lateral, smooth_longitudinal, smooth_curve_lateral, smooth_curve_longitudinal)):
         point_ratio = index / max(1, point_count - 1)
         is_endpoint = index == 0 or index == point_count - 1
         min_target = DEFAULT_ENDPOINT_OFFSET_METERS * OFFSET_SAFETY_MARGIN if is_endpoint else DEFAULT_MIDDLE_MIN_OFFSET_METERS * MIDDLE_MIN_OFFSET_SAFETY
         max_target = DEFAULT_MAX_POINT_OFFSET_METERS * OFFSET_SAFETY_MARGIN if is_endpoint else DEFAULT_MIDDLE_MAX_OFFSET_METERS * MIDDLE_MAX_OFFSET_SAFETY
-        lateral_offset = (base_lat * (1.42 + 0.22 * math.sin(point_ratio * math.pi))) + bend_lat
+        lateral_offset = (base_lat * (1.75 + 0.35 * math.sin(point_ratio * math.pi))) + bend_lat
         longitudinal_offset = (base_lon * 0.62) + (bend_lon * 0.72)
         tangent = local_tangents[index]
         normal = local_normals[index]
@@ -377,11 +378,11 @@ def blend_display_trajectory(anchor_trajectory, alternate_trajectory, labels):
     return build_display_trajectory_from_alternate(blended_trajectory, labels)
 
 
-def scramble_trajectory_with_labels(real_trajectory, labels, scramble_radius_meters, display_base_trajectory=None):
+def scramble_trajectory_with_labels(real_trajectory, labels, scramble_radius_meters, session_seed, display_base_trajectory=None):
     reference_frame = build_reference_frame(real_trajectory)
     route_frames = build_local_route_frames(real_trajectory, reference_frame)
     anchor_scrambled_trajectory = []
-    smoothed_offsets = build_smoothed_label_offsets(labels, real_trajectory, reference_frame, scramble_radius_meters, route_frames=route_frames)
+    smoothed_offsets = build_smoothed_label_offsets(labels, real_trajectory, reference_frame, scramble_radius_meters, session_seed, route_frames=route_frames)
     for index, point in enumerate(real_trajectory):
         local_point = to_local_meters(point, reference_frame)
         offset_x, offset_y = smoothed_offsets[index]
@@ -397,9 +398,9 @@ def scramble_trajectory_with_labels(real_trajectory, labels, scramble_radius_met
     return scrambled_trajectory, anchor_scrambled_trajectory, reference_frame, route_frames
 
 
-def recover_trajectory_from_labels(scrambled_trajectory, labels, reference_frame, scramble_radius_meters, route_frames=None):
+def recover_trajectory_from_labels(scrambled_trajectory, labels, reference_frame, scramble_radius_meters, session_seed, route_frames=None):
     recovered_trajectory = []
-    smoothed_offsets = build_smoothed_label_offsets(labels, scrambled_trajectory, reference_frame, scramble_radius_meters, route_frames=route_frames)
+    smoothed_offsets = build_smoothed_label_offsets(labels, scrambled_trajectory, reference_frame, scramble_radius_meters, session_seed, route_frames=route_frames)
     for index, point in enumerate(scrambled_trajectory):
         scrambled_local_point = to_local_meters(point, reference_frame)
         offset_x, offset_y = smoothed_offsets[index]
@@ -588,6 +589,7 @@ def build_label_locked_trajectory_package(real_trajectory, dynamic_factors, user
             real_trajectory,
             labels,
             scramble_radius_meters,
+            session_seed,
             display_base_trajectory=display_base_trajectory,
         )
         min_distance = estimate_min_distance_meters(candidate, real_trajectory)
@@ -615,7 +617,7 @@ def build_label_locked_trajectory_package(real_trajectory, dynamic_factors, user
         scramble_radius_meters = best_scramble_radius
     if scrambled_trajectory is None or reference_frame is None:
         raise RuntimeError("Unable to generate a sufficiently scrambled label-locked trajectory")
-    recovered_trajectory = recover_trajectory_from_labels(anchor_scrambled_trajectory, labels, reference_frame, scramble_radius_meters, route_frames=route_frames)
+    recovered_trajectory = recover_trajectory_from_labels(anchor_scrambled_trajectory, labels, reference_frame, scramble_radius_meters, session_seed, route_frames=route_frames)
     secure_clear_dict(privacy_profile)
     return {
         "scheme": "label_locked_scramble_v2",
@@ -633,6 +635,7 @@ def build_label_locked_trajectory_package(real_trajectory, dynamic_factors, user
         "scrambled_anchor_trajectory": anchor_scrambled_trajectory,
         "scrambled_trajectory": scrambled_trajectory,
         "recovered_trajectory": recovered_trajectory,
+        "session_seed": base64.urlsafe_b64encode(session_seed).decode("ascii"),
     }
 
 
