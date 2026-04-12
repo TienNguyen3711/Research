@@ -1,0 +1,186 @@
+{
+  "dataset_source": "synthetic",
+  "n_trajectories": 10,
+  "experiment_1": [
+    {
+      "offset_m": 500,
+      "our_system": {
+        "ARR": 0.0225,
+        "FD_m": 425.28331730447434,
+        "SPS": null
+      },
+      "planar_laplace": {
+        "ARR": 0.052500000000000005,
+        "FD_m": 2636.3229973690673,
+        "SPS": null
+      },
+      "k_anonymity": {
+        "ARR": 0.09249999999999999,
+        "FD_m": 79.56790357672003,
+        "SPS": null
+      },
+      "raw_storage": {
+        "ARR": 1.0,
+        "FD_m": 0.0,
+        "SPS": null
+      }
+    },
+    {
+      "offset_m": 2000,
+      "our_system": {
+        "ARR": 0.017499999999999998,
+        "FD_m": 1633.43804728168,
+        "SPS": null
+      },
+      "planar_laplace": {
+        "ARR": 0.005,
+        "FD_m": 9581.098236432292,
+        "SPS": null
+      },
+      "k_anonymity": {
+        "ARR": 0.0,
+        "FD_m": 318.27087502421284,
+        "SPS": null
+      },
+      "raw_storage": {
+        "ARR": 1.0,
+        "FD_m": 0.0,
+        "SPS": null
+      }
+    },
+    {
+      "offset_m": 5000,
+      "our_system": {
+        "ARR": 0.005,
+        "FD_m": 4133.834449858666,
+        "SPS": null
+      },
+      "planar_laplace": {
+        "ARR": 0.0025,
+        "FD_m": 27708.020580190518,
+        "SPS": null
+      },
+      "k_anonymity": {
+        "ARR": 0.0,
+        "FD_m": 795.6734909273572,
+        "SPS": null
+      },
+      "raw_storage": {
+        "ARR": 1.0,
+        "FD_m": 0.0,
+        "SPS": null
+      }
+    }
+  ],
+  "experiment_2": {
+    "SEB": {
+      "entropy_bits": 252.1290582672913,
+      "max_possible_bits": 256,
+      "entropy_ratio": 0.9848791338566066,
+      "n_seeds": 50
+    },
+    "TUR": {
+      "tur": 1.0,
+      "unique": 50,
+      "total": 50
+    }
+  },
+  "experiment_3": {
+    "our_system": {
+      "detection_rate": 0.9,
+      "total": 10
+    },
+    "planar_laplace": {
+      "detection_rate": 1.0,
+      "total": 10
+    },
+    "k_anonymity": {
+      "detection_rate": 0.0,
+      "total": 10
+    }
+  },
+  "experiment_4": [
+    {
+      "n_points": 8,
+      "generation_ms": 0.2,
+      "ERTI": 1.0,
+      "VPS": 0.14285714285714285
+    },
+    {
+      "n_points": 15,
+      "generation_ms": 0.3,
+      "ERTI": 1.0,
+      "VPS": 0.35714285714285715
+    },
+    {
+      "n_points": 25,
+      "generation_ms": 0.9,
+      "ERTI": 1.0,
+      "VPS": 0.4583333333333333
+    },
+    {
+      "n_points": 50,
+      "generation_ms": 1.3,
+      "ERTI": 1.0,
+      "VPS": 0.5102040816326531
+    },
+    {
+      "n_points": 100,
+      "generation_ms": 32.9,
+      "ERTI": 1.0,
+      "VPS": 0.46464646464646464
+    }
+  ],
+  "experiment_5": [
+    {
+      "iterations": 100000,
+      "derive_ms": 15.5,
+      "key_len_bytes": 32
+    },
+    {
+      "iterations": 390000,
+      "derive_ms": 60.2,
+      "key_len_bytes": 32
+    },
+    {
+      "iterations": 600000,
+      "derive_ms": 92.1,
+      "key_len_bytes": 32
+    }
+  ],
+  "full_metric_summary": {
+    "our_system": {
+      "ARR": 0.015,
+      "FD_m": 1605.8254430277193,
+      "EPS_start": 1319.512278611081,
+      "EPS_end": 1343.7317315404669,
+      "VPS": 0.4948717948717949,
+      "GIS": 0.5,
+      "ERTI": 1.0
+    },
+    "planar_laplace": {
+      "ARR": 0.07,
+      "FD_m": 2400.9683556807495,
+      "EPS_start": 1012.5040787056636,
+      "EPS_end": 811.6267495445728,
+      "VPS": 0.2230769230769231,
+      "GIS": 0.0
+    },
+    "k_anonymity": {
+      "ARR": 0.0,
+      "FD_m": 238.70334109259412,
+      "EPS_start": 238.63726219892433,
+      "EPS_end": 238.70334109259412,
+      "VPS": 0.5717948717948718,
+      "GIS": 2.5
+    },
+    "raw_storage": {
+      "ARR": 1.0,
+      "FD_m": 0.0,
+      "EPS_start": 0.0,
+      "EPS_end": 0.0,
+      "VPS": 0.5717948717948718,
+      "GIS": 2.6
+    }
+  }
+}

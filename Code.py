@@ -1,3 +1,5 @@
+import time
+
 from trajectory_layer_bootstrap import (
     DEFAULT_ENABLE_VISUAL_OUTPUTS,
     DEFAULT_HEADLESS_LOCAL_TEST,
@@ -24,8 +26,11 @@ from trajectory_layer_visualization import plot_trajectories, render_real_map
 
 def main():
     """Run the layered trajectory pipeline from acquisition to encrypted storage."""
-    user_id = int(os.getenv("USER_ID", 123))
-    timestamp = int(os.getenv("TIMESTAMP", 1700000000))
+    user_id_env = os.getenv("USER_ID")
+    if not user_id_env or not user_id_env.strip().lstrip("-").isdigit():
+        raise EnvironmentError("USER_ID environment variable is required and must be a positive integer (e.g. USER_ID=42)")
+    user_id = int(user_id_env)
+    timestamp = int(os.getenv("TIMESTAMP") or int(time.time()))
     prefer_live_google_route = os.getenv("PREFER_LIVE_GOOGLE_ROUTE", "1") != "0"
     has_google_maps_key = bool(os.getenv("GOOGLE_MAPS_API_KEY"))
     route_source = "local_mock"
